@@ -1,21 +1,50 @@
-# Node.js with React
-# Build a Node.js project that uses React.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+name: hello-example-$(BuildID)
 
 trigger:
-- main
+  branches:
+    include:
+      - main
+      - feature/*
+      - bugfix/*
+      - hotfix/*
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: "ubuntu-18.04"
 
 steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '18.x'
-  displayName: 'Install Node.js'
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "14.x"
+    displayName: "Install Node.js"
 
-- script: |
-    npm install
-    npm run build
-  displayName: 'npm install and build'
+  - script: |
+      npm audit --audit-level=high      
+    displayName: "NPM: Audit dependencies (high)"
+    
+  - script: |
+      npm ci      
+    displayName: "NPM: install deps"
+
+  - script: |
+      npm run lint      
+    displayName: "Tests: Lint"
+
+  - script: |
+      npm run test-ci      
+    displayName: "Tests: Jest"
+
+  - script: |
+      npm run build      
+    displayName: "Prod build"
+
+  - task: PublishTestResults@1
+    condition: succeededOrFailed()
+    inputs:
+      testRunner: JUnit
+      testResultsFiles: '**/junit.xml'
+
+  - task: PublishCodeCoverageResults@1
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: "Cobertura"
+      summaryFileLocation: "**/coverage/cobertura-coverage.xml"
